@@ -22,43 +22,65 @@ export const SlackIT = () => {
 
   // Alert when incident happens
   useEffect(() => {
-    if (state.activeIncidentId) {
+    if (state.activeIncidentId && state.gameStarted) {
       const responsePersona: PersonaType = Math.random() > 0.6 ? 'CEO' : (Math.random() > 0.5 ? 'CS' : 'DEVOPS');
       const personaData = PERSONAS[responsePersona];
       
-      const alertMessages: Record<string, Record<string, string>> = {
-        db: {
-          id: "WOI DATABASE MATI YA?? ERROR KEBANYAKAN KONEKSI!",
-          en: "IS THE DATABASE DOWN?? TOO MANY CONNECTIONS ERROR!"
-        },
-        memory: {
-          id: "Memory server udah 99% nih, dikit lagi meledak kayaknya.",
-          en: "Server memory is at 99%, I think it's about to explode."
-        },
-        traffic: {
-          id: "Kak, ini kenapa checkout gagal terus? User udah ngamuk di DM Twitter!",
-          en: "Hey, why is checkout failing? Users are literalually screaming in our DMs!"
-        },
-        deploy: {
-          id: "Siapa yang push barusan? Latensinya gila bgt 5 detik!",
-          en: "Who just pushed code? Latency is insane, like 5 seconds!"
+      const triggerAlert = async () => {
+        let msgText = "";
+        
+        if (state.aiMode) {
+          msgText = await generateChatResponse(
+            `ALERT: Incident just started: ${state.activeIncidentId}. Shout about it to the team!`,
+            lang,
+            responsePersona,
+            { systemUptime: state.systemUptime, bossAnxiety: state.bossAnxiety, serverLoad: state.serverLoad }
+          );
+        } else {
+          const alertMessages: Record<string, Record<PersonaType, Record<string, string>>> = {
+            db: {
+              CEO: { id: "WOI DATABASE MATI YA?? RUGI GEDE KITA!", en: "IS THE DATABASE DOWN?? WE'RE LOSING HUGE MONEY!" },
+              CS: { id: "Kak, database error terus, user gabisa bayar!", en: "Hey, database keeps failing, users can't pay!" },
+              DEVOPS: { id: "Query db lu ampas bgt, koneksi pool penuh tuh.", en: "Your queries are trash, connection pool is exhausted." },
+              SYSTEM: { id: "DB Connection failure", en: "DB Connection failure" }
+            },
+            memory: {
+              CEO: { id: "SERVER LEMOT BANGET! BELI RAM BARU SANA!", en: "SERVERS ARE SO SLOW! GO BUY MORE RAM!" },
+              CS: { id: "Duh kak, aplikasinya nge-hang terus di user.", en: "Oh no, the app keeps freezing for our users." },
+              DEVOPS: { id: "Memory leaking tuh, siapa yg nulis code sampah?", en: "Memory is leaking, who wrote this garbage code?" },
+              SYSTEM: { id: "High memory usage", en: "High memory usage" }
+            },
+            traffic: {
+              CEO: { id: "USER PADA KABUR! FIX IN SEKARANG JUGA!", en: "USERS ARE LEAVING! FIX THIS RIGHT NOW!" },
+              CS: { id: "Kak, Twitter rame bgt #StartupAmpas trending!", en: "Hey, Twitter is blowing up #StartupAmpas is trending!" },
+              DEVOPS: { id: "Traffic spike doang kaget, cemen bgt infra lu.", en: "Just a traffic spike, your infra is so weak." },
+              SYSTEM: { id: "Traffic surge detected", en: "Traffic surge detected" }
+            },
+            deploy: {
+              CEO: { id: "SIAPA YANG PUSH CODE ERROR?? PECAT AJA!", en: "WHO PUSHED BROKEN CODE?? FIRE THEM!" },
+              CS: { id: "Aplikasi kok makin aneh kak abis update tadi?", en: "Why is the app weirder after the update?" },
+              DEVOPS: { id: "Kan udah dibilang jgn deploy Jumat, ngeyel lu.", en: "I told you not to deploy on Friday, you're so stubborn." },
+              SYSTEM: { id: "Latence increase after deploy", en: "Latence increase after deploy" }
+            }
+          };
+          msgText = alertMessages[state.activeIncidentId]?.[responsePersona]?.[lang] || "System Alert!";
         }
+
+        dispatch({
+          type: 'ADD_MESSAGE',
+          payload: {
+            id: Math.random().toString(),
+            sender: personaData.name,
+            text: msgText,
+            timestamp: new Date(),
+            persona: responsePersona,
+          }
+        });
       };
 
-      const msgText = alertMessages[state.activeIncidentId]?.[lang] || "System Alert!";
-
-      dispatch({
-        type: 'ADD_MESSAGE',
-        payload: {
-          id: Math.random().toString(),
-          sender: personaData.name,
-          text: msgText,
-          timestamp: new Date(),
-          persona: responsePersona,
-        }
-      });
+      triggerAlert();
     }
-  }, [state.activeIncidentId]);
+  }, [state.activeIncidentId, state.gameStarted]);
 
   const choices: DialogueChoice[] = [
     { 
@@ -95,11 +117,11 @@ export const SlackIT = () => {
         responseText = await generateChatResponse("Reply to my message: " + choice.text[lang] + ". Current incident: " + state.activeIncidentId, lang, responsePersona, { systemUptime: state.systemUptime, bossAnxiety: state.bossAnxiety, serverLoad: state.serverLoad });
       } else {
          if (responsePersona === 'CEO') {
-           responseText = lang === 'id' ? "DITUNGGU! JANGAN LAMA!" : "I'M WAITING! DON'T BE LATE!";
+           responseText = lang === 'id' ? "CEPETAN! GW MAU MEETING SAMA INVESTOR INI!" : "HURRY! I HAVE AN INVESTOR PITCH IN 5 MINUTES!";
          } else if (responsePersona === 'CS') {
-           responseText = lang === 'id' ? "Ok kak, gw kabarin user dulu ya." : "Okay, I'll update the users for now.";
+           responseText = lang === 'id' ? "Makasih kak, moga cepet bener ya. User udah makin galak." : "Thanks, hope it gets fixed soon. Users are getting aggressive.";
          } else {
-           responseText = lang === 'id' ? "Tuh kan, makanya dengerin kata gw." : "See? This is why you should listen to me.";
+           responseText = lang === 'id' ? "Gitu doang heboh. Lu liat tuh repo sebelah, bug-nya lebih parah." : "Always so dramatic. Look at the other repo, their bugs are way worse.";
          }
       }
 
