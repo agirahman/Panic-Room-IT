@@ -41,41 +41,75 @@ class SoundService {
     osc.stop(this.audioContext.currentTime + duration);
   }
 
+  private activeAudios: Set<HTMLAudioElement> = new Set();
+  
+  stopEffects() {
+    this.activeAudios.forEach(audio => {
+      audio.pause();
+      audio.currentTime = 0;
+    });
+    this.activeAudios.clear();
+  }
+
   private playFile(path: string, volume: number = 0.5) {
     this.resumeContext();
     const audio = new Audio(path);
     audio.volume = volume;
-    audio.play().catch(e => console.error("Error playing sound:", path, e));
+    this.activeAudios.add(audio);
+    
+    audio.addEventListener('ended', () => {
+      this.activeAudios.delete(audio);
+    });
+
+    audio.play().catch(e => {
+      this.activeAudios.delete(audio);
+      console.error("Error playing sound:", path, e);
+    });
   }
 
   private alertAudio: HTMLAudioElement | null = null;
+  private alertPlayPromise: Promise<void> | null = null;
 
   startAlert() {
     this.stopAlert();
-    this.alertAudio = new Audio('/assets/danger-siren-alarm_BfknMds.mp3');
+    this.alertAudio = new Audio('/error.mp3');
     this.alertAudio.volume = 0.3;
-    // this.alertAudio.loop = true; // We don't want it to loop indefinitely if we just want it to act as an alert, but maybe we do while incident is active? The user only complained that it stays after it's solved.
-    this.alertAudio.play().catch(e => console.error("Alert play error:", e));
+    this.alertAudio.loop = true; // Loop the error sound while active
+    this.alertPlayPromise = this.alertAudio.play();
+    this.alertPlayPromise.catch(e => {
+      if (e.name !== 'AbortError') console.error("Alert play error:", e);
+    });
   }
 
   stopAlert() {
     if (this.alertAudio) {
-      this.alertAudio.pause();
-      this.alertAudio.currentTime = 0;
+      const audioToStop = this.alertAudio;
       this.alertAudio = null;
+      
+      // If play() was called, we must wait for it to resolve or catch before pausing
+      if (this.alertPlayPromise) {
+        this.alertPlayPromise.then(() => {
+          audioToStop.pause();
+          audioToStop.currentTime = 0;
+        }).catch(() => {});
+        this.alertPlayPromise = null;
+      } else {
+        audioToStop.pause();
+        audioToStop.currentTime = 0;
+      }
     }
   }
 
   playSlackPing() {
-    this.playFile('/assets/discord ping.mp3', 0.5);
+    this.playFile('/ping.mp3', 0.5);
   }
 
   playSuccess() {
-    this.playFile('/assets/correct.mp3', 0.5);
+    this.playFile('/correct.mp3', 0.5);
   }
 
   playError() {
-    this.playFile('/assets/wrong-answer-buzzer.mp3', 0.5);
+    this.playFile('/wrong.mp3', 0.5);
   }
 
   playClick() {
@@ -83,27 +117,39 @@ class SoundService {
   }
 
   playVictory() {
-    this.playFile('/assets/winner.mp3', 0.6);
+    this.playFile('/winner.mp3', 0.6);
   }
 
   playGameOver() {
-    this.playFile('/assets/gameover.mp3', 0.6);
+    this.playFile('/gameover.mp3', 0.6);
   }
 
   private bgm: HTMLAudioElement | null = null;
+  private bgmPlayPromise: Promise<void> | null = null;
 
   startBGM() {
-    if (this.bgm) return;
-    this.bgm = new Audio('assets/BACKSOUND RYAN SUPERNAYR ｜ PART 1 [7hOwM_PfNBo].m4a');
-    this.bgm.loop = true;
-    this.bgm.volume = 0.3;
-    this.bgm.play().catch(e => console.error("BGM play error:", e));
+    if (!this.bgm) {
+      this.bgm = new Audio('/bgm.m4a');
+      this.bgm.loop = true;
+      this.bgm.volume = 0.3;
+    }
+    this.bgmPlayPromise = this.bgm.play();
+    this.bgmPlayPromise.catch(e => {
+      if (e.name !== 'AbortError') console.error("BGM play error:", e);
+    });
   }
 
   stopBGM() {
     if (this.bgm) {
-      this.bgm.pause();
-      this.bgm = null;
+      // Don't reset currentTime here so it resumes appropriately when startBGM is called
+      if (this.bgmPlayPromise) {
+        this.bgmPlayPromise.then(() => {
+          this.bgm?.pause();
+        }).catch(() => {});
+        this.bgmPlayPromise = null;
+      } else {
+        this.bgm.pause();
+      }
     }
   }
 }
