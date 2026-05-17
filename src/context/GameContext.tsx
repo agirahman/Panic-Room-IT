@@ -15,6 +15,7 @@ const initialState: GameState = {
   chatHistory: [],
   isGameOver: false,
   gameStarted: false,
+  isPaused: false,
   victory: false,
   aiMode: false,
   activeIncidentId: null,
@@ -39,6 +40,8 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       return { ...initialState, currentLanguage: state.currentLanguage, aiMode: state.aiMode };
     case 'TOGGLE_AI_MODE':
       return { ...state, aiMode: !state.aiMode };
+    case 'TOGGLE_PAUSE':
+      return { ...state, isPaused: !state.isPaused };
     case 'SET_INCIDENT':
       return { ...state, activeIncidentId: action.payload };
     case 'START_GAME':

@@ -33,6 +33,16 @@ export const UI_STRINGS = {
     databaseFlush: 'Flushing Redis cache...',
     scaleHorizontal: 'Spinning up new instances...',
     rollback: 'Rolling back last deploy...',
+    pause: 'Pause',
+    resume: 'Resume',
+    howToPlayTitle: 'How to Play',
+    howToPlayGuide: [
+      '1. Watch the Logs: Red/Critical logs indicate an incident is happening.',
+      '2. Fix it Fast: Use the Action Buttons (Reboot, Flush, etc.) that match the log error.',
+      '3. Manage Stakeholders: Reply to Slack messages to keep boss stress down.',
+      '4. Win Condition: Reach 100% System Health.',
+      '5. Lose Condition: Reach 100% Boss Stress or 0% Health.',
+    ],
   },
   id: {
     title: 'Panic Room IT 🚨',
@@ -61,6 +71,16 @@ export const UI_STRINGS = {
     databaseFlush: 'Membersihkan cache Redis...',
     scaleHorizontal: 'Menambah instance baru...',
     rollback: 'Rollback deploy terakhir...',
+    pause: 'Jeda',
+    resume: 'Lanjut',
+    howToPlayTitle: 'Cara Bermain',
+    howToPlayGuide: [
+      '1. Pantau Log: Log Merah/Critical menandakan ada insiden.',
+      '2. Perbaiki Cepat: Gunakan Tombol Aksi (Reboot, Flush, dll) yang sesuai dengan error di log.',
+      '3. Kelola Stakeholder: Balas pesan Slack untuk menjaga tingkat stres bos.',
+      '4. Menang: Capai 100% Kesehatan Sistem.',
+      '5. Kalah: Stres Bos mencapai 100% atau Kesehatan Sistem 0%.',
+    ],
   }
 };
 

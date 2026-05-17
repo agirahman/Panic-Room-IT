@@ -7,6 +7,7 @@ import React, { useState, useEffect } from 'react';
 import { useGame } from '../context/GameContext';
 import { UI_STRINGS } from '../locales/dictionary';
 import { motion } from 'motion/react';
+import { sounds } from '../lib/soundService';
 import { LineChart, Line, ResponsiveContainer, YAxis, XAxis, Tooltip, AreaChart, Area } from 'recharts';
 import { Activity, Terminal, Database, RefreshCw, Layers, Power } from 'lucide-react';
 
@@ -38,7 +39,22 @@ export const DevOpsDashboard = () => {
 
   const currentIncident = INCIDENTS.find(i => i.id === state.activeIncidentId) || null;
 
+  // Initial incident log delay
   useEffect(() => {
+    if (state.activeIncidentId && state.gameStarted && !state.isPaused && !state.isGameOver) {
+      const timeout = setTimeout(() => {
+        const incident = INCIDENTS.find(i => i.id === state.activeIncidentId);
+        if (incident) {
+          setLogs(prev => [incident.log, ...prev.slice(0, 15)]);
+        }
+      }, 2000); // Wait 2s (Slack alert first)
+      return () => clearTimeout(timeout);
+    }
+  }, [state.activeIncidentId, state.gameStarted, state.isPaused, state.isGameOver]);
+
+  useEffect(() => {
+    if (state.isPaused || !state.gameStarted || state.isGameOver) return;
+
     const interval = setInterval(() => {
       // Metric simulation
       setMetrics(prev => [
@@ -67,31 +83,37 @@ export const DevOpsDashboard = () => {
           } 
         });
         
-        if (Math.random() > 0.8) {
+        // Ensure incident log stays visible/repeated if not solved
+        if (Math.random() > 0.5) {
+          setLogs(prev => [currentIncident.log, ...prev.slice(0, 15)]);
+        }
+        
+        if (Math.random() > 0.7) {
           setLogs(prev => [`CRITICAL: Unresolved ${currentIncident.id} is causing cascading failures!`, ...prev.slice(0, 15)]);
         }
-      }
+      } else {
+        // Regular Log streaming - ONLY if no incident
+        const randomLogs = [
+          "INFO: GET /api/health 200 OK",
+          "INFO: New user session established",
+          "INFO: Load balancer shifting traffic to us-east-1",
+          "DEBUG: Cache hit for key 'product_123'",
+          "DEBUG: Garbage collection completed in 15ms",
+          "INFO: Auth token validated for user_992",
+        ];
 
-      // Log streaming
-      const randomLogs = [
-        "INFO: GET /api/health 200 OK",
-        "INFO: New user session established",
-        "INFO: Load balancer shifting traffic to us-east-1",
-        "DEBUG: Cache hit for key 'product_123'",
-      ];
+        const logToPush = randomLogs[Math.floor(Math.random() * randomLogs.length)];
 
-      const logToPush = currentIncident 
-        ? currentIncident.log 
-        : randomLogs[Math.floor(Math.random() * randomLogs.length)];
-
-      if (Math.random() > 0.5) {
-        setLogs(prev => [logToPush, ...prev.slice(0, 15)]);
+        if (Math.random() > 0.6) {
+          setLogs(prev => [logToPush, ...prev.slice(0, 15)]);
+        }
       }
     }, 2000);
     return () => clearInterval(interval);
-  }, [state.serverLoad, state.systemUptime, currentIncident]);
+  }, [state.serverLoad, state.systemUptime, currentIncident, state.isPaused, state.gameStarted, state.isGameOver]);
 
   const handleAction = (type: string) => {
+    sounds.playClick();
     if (!currentIncident) {
       // Trying to fix something that isn't broken
       dispatch({ type: 'UPDATE_METRIC', payload: { systemUptime: -2, bossAnxiety: 5 } });
@@ -101,6 +123,7 @@ export const DevOpsDashboard = () => {
 
     if (currentIncident.solution === type) {
       // Correct solution
+      sounds.playSuccess();
       const effects: Record<string, any> = {
         reboot: { systemUptime: 15, bossAnxiety: -10, serverLoad: -10 },
         flush: { systemUptime: 12, bossAnxiety: -5, serverLoad: -15 },
@@ -112,6 +135,7 @@ export const DevOpsDashboard = () => {
       dispatch({ type: 'SET_INCIDENT', payload: null });
     } else {
       // Wrong solution
+      sounds.playError();
       dispatch({ type: 'UPDATE_METRIC', payload: { systemUptime: -10, bossAnxiety: 15, serverLoad: 10 } });
       setLogs(prev => [`ERROR: Action '${type}' failed to resolve ${currentIncident.id}. System destabilizing!`, ...prev.slice(0, 15)]);
     }
@@ -187,31 +211,35 @@ export const DevOpsDashboard = () => {
           label={t.rebooting} 
           onClick={() => handleAction('reboot')}
           color="blue"
+          disabled={state.isPaused || state.isGameOver}
         />
         <ActionButton 
           icon={<Database size={18} />} 
           label={t.databaseFlush} 
           onClick={() => handleAction('flush')}
           color="yellow"
+          disabled={state.isPaused || state.isGameOver}
         />
         <ActionButton 
           icon={<Layers size={18} />} 
           label={t.scaleHorizontal} 
           onClick={() => handleAction('scale')}
           color="green"
+          disabled={state.isPaused || state.isGameOver}
         />
         <ActionButton 
           icon={<Power size={18} />} 
           label={t.rollback} 
           onClick={() => handleAction('rollback')}
           color="red"
+          disabled={state.isPaused || state.isGameOver}
         />
       </div>
     </div>
   );
 };
 
-const ActionButton = ({ icon, label, onClick, color }: { icon: React.ReactNode, label: string, onClick: () => void, color: string }) => {
+const ActionButton = ({ icon, label, onClick, color, disabled }: { icon: React.ReactNode, label: string, onClick: () => void, color: string, disabled: boolean }) => {
   const colors: Record<string, string> = {
     blue: "hover:bg-blue-500/20 hover:border-blue-500/50 text-blue-400",
     yellow: "hover:bg-yellow-500/20 hover:border-yellow-500/50 text-yellow-400",
@@ -222,7 +250,8 @@ const ActionButton = ({ icon, label, onClick, color }: { icon: React.ReactNode, 
   return (
     <button
       onClick={onClick}
-      className={`flex items-center gap-3 p-4 bg-white/5 border border-white/10 rounded-xl transition-all text-sm font-medium ${colors[color]}`}
+      disabled={disabled}
+      className={`flex items-center gap-3 p-4 bg-white/5 border border-white/10 rounded-xl transition-all text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed ${!disabled ? colors[color] : 'text-gray-600'}`}
     >
       {icon}
       <span>{label}</span>

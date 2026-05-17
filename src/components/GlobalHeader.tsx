@@ -7,12 +7,28 @@ import React from 'react';
 import { useGame } from '../context/GameContext';
 import { UI_STRINGS } from '../locales/dictionary';
 import { motion } from 'motion/react';
-import { Globe, ShieldAlert, Cpu, UserCircle } from 'lucide-react';
+import { Globe, ShieldAlert, Cpu, UserCircle, Pause, Play } from 'lucide-react';
+import { sounds } from '../lib/soundService';
 
 export const GlobalHeader = () => {
   const { state, dispatch } = useGame();
   const lang = state.currentLanguage;
   const t = UI_STRINGS[lang];
+
+  const handleLangToggle = () => {
+    sounds.playClick();
+    dispatch({ type: 'SET_LANGUAGE', payload: lang === 'en' ? 'id' : 'en' });
+  };
+
+  const handlePause = () => {
+    sounds.playClick();
+    dispatch({ type: 'TOGGLE_PAUSE' });
+  };
+
+  const handleAI = () => {
+    sounds.playClick();
+    dispatch({ type: 'TOGGLE_AI_MODE' });
+  };
 
   return (
     <header className="h-16 border-b border-white/10 bg-black/50 backdrop-blur-md flex items-center justify-between px-6 sticky top-0 z-50">
@@ -53,8 +69,15 @@ export const GlobalHeader = () => {
       </div>
 
       <div className="flex items-center gap-4">
+        <button
+          onClick={handlePause}
+          className="flex items-center gap-2 bg-white/5 text-white border border-white/10 px-3 py-1 rounded text-xs hover:bg-white/10 transition-colors"
+        >
+          {state.isPaused ? <><Play size={14} fill="currentColor" /> {t.resume}</> : <><Pause size={14} fill="currentColor" /> {t.pause}</>}
+        </button>
+
         <button 
-          onClick={() => dispatch({ type: 'TOGGLE_AI_MODE' })}
+          onClick={handleAI}
           className={state.aiMode ? "bg-purple-500/20 text-purple-400 border border-purple-500/50 px-3 py-1 rounded text-xs transition-colors" : "bg-white/5 text-gray-400 border border-white/10 px-3 py-1 rounded text-xs transition-colors"}
         >
           {state.aiMode ? t.aiMode : t.mockMode}
@@ -62,13 +85,13 @@ export const GlobalHeader = () => {
 
         <div className="flex items-center bg-white/5 rounded-lg border border-white/10 p-0.5">
           <button 
-            onClick={() => dispatch({ type: 'SET_LANGUAGE', payload: 'id' })}
+            onClick={() => { sounds.playClick(); dispatch({ type: 'SET_LANGUAGE', payload: 'id' }); }}
             className={lang === 'id' ? "bg-white/10 px-2 py-1 rounded text-[10px] font-bold" : "px-2 py-1 rounded text-[10px] text-gray-500"}
           >
             ID
           </button>
           <button 
-            onClick={() => dispatch({ type: 'SET_LANGUAGE', payload: 'en' })}
+            onClick={() => { sounds.playClick(); dispatch({ type: 'SET_LANGUAGE', payload: 'en' }); }}
             className={lang === 'en' ? "bg-white/10 px-2 py-1 rounded text-[10px] font-bold" : "px-2 py-1 rounded text-[10px] text-gray-500"}
           >
             EN

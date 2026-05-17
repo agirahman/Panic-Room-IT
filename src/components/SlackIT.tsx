@@ -9,6 +9,7 @@ import { PERSONAS } from '../locales/dictionary';
 import { motion, AnimatePresence } from 'motion/react';
 import { Hash, MessageSquare, Send, User } from 'lucide-react';
 import { generateChatResponse } from '../lib/geminiService';
+import { sounds } from '../lib/soundService';
 import { PersonaType, DialogueChoice } from '../types';
 
 export const SlackIT = () => {
@@ -17,12 +18,19 @@ export const SlackIT = () => {
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (state.chatHistory.length > 0 && !state.isGameOver) {
+      const lastMsg = state.chatHistory[state.chatHistory.length - 1];
+      if (lastMsg.sender !== 'You') {
+        sounds.playSlackPing();
+      }
+    }
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [state.chatHistory]);
+  }, [state.chatHistory, state.isGameOver]);
 
   // Alert when incident happens
   useEffect(() => {
-    if (state.activeIncidentId && state.gameStarted) {
+    if (state.activeIncidentId && state.gameStarted && !state.isPaused && !state.isGameOver) {
+      sounds.startAlert();
       const responsePersona: PersonaType = Math.random() > 0.6 ? 'CEO' : (Math.random() > 0.5 ? 'CS' : 'DEVOPS');
       const personaData = PERSONAS[responsePersona];
       
@@ -79,8 +87,10 @@ export const SlackIT = () => {
       };
 
       triggerAlert();
+    } else {
+      sounds.stopAlert();
     }
-  }, [state.activeIncidentId, state.gameStarted]);
+  }, [state.activeIncidentId, state.gameStarted, state.isPaused, state.isGameOver]);
 
   const choices: DialogueChoice[] = [
     { 
@@ -227,9 +237,9 @@ export const SlackIT = () => {
                   {choices.map((choice, i) => (
                     <button
                       key={i}
-                      disabled={state.isGameOver}
+                      disabled={state.isGameOver || state.isPaused}
                       onClick={() => handleChoice(choice)}
-                      className="group relative flex items-center justify-between w-full p-3 rounded-xl border border-white/5 bg-white/5 hover:bg-blue-500/10 hover:border-blue-500/30 text-xs text-gray-400 hover:text-white transition-all text-left"
+                      className="group relative flex items-center justify-between w-full p-3 rounded-xl border border-white/5 bg-white/5 hover:bg-blue-500/10 hover:border-blue-500/30 text-xs text-gray-400 hover:text-white transition-all text-left disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <span>{choice.text[lang]}</span>
                       <Send size={14} className="opacity-0 group-hover:opacity-100 transition-opacity text-blue-500" />

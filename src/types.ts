@@ -38,6 +38,7 @@ export interface GameState {
   chatHistory: ChatMessage[];
   isGameOver: boolean;
   gameStarted: boolean;
+  isPaused: boolean;
   victory: boolean;
   aiMode: boolean;
   activeIncidentId: string | null;
@@ -50,5 +51,6 @@ export type GameAction =
   | { type: 'SET_GAME_OVER'; payload: { victory: boolean } }
   | { type: 'RESTART_GAME' }
   | { type: 'TOGGLE_AI_MODE' }
+  | { type: 'TOGGLE_PAUSE' }
   | { type: 'SET_INCIDENT'; payload: string | null }
   | { type: 'START_GAME' };
